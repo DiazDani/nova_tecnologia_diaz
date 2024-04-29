@@ -21,8 +21,6 @@ class _ProvaWidgetState extends State<ProvaWidget> {
     if (response.statusCode == 200) {
       setState(() {
         pokemonList = json.decode(response.body)['results'];
-        // Inicializar displayedPokemonList con la lista completa de Pokémon
-        displayedPokemonList = List.from(pokemonList);
       });
     } else {
       throw Exception('Failed to load data');
@@ -52,37 +50,42 @@ class _ProvaWidgetState extends State<ProvaWidget> {
               prefixIcon: Icon(Icons.search),
             ),
             onChanged: (value) {
-              // Filtrar la lista de Pokémon según la entrada del usuario
               setState(() {
-                displayedPokemonList = pokemonList.where((pokemon) =>
-                    pokemon['name'].toLowerCase().contains(value.toLowerCase())).toList();
+                // Filtrar la lista de Pokémon solo si el campo de texto no está vacío
+                if (value.isNotEmpty) {
+                  displayedPokemonList = pokemonList.where((pokemon) =>
+                      pokemon['name'].toLowerCase().contains(value.toLowerCase())).toList();
+                } else {
+                  // Si el campo de texto está vacío, no mostrar ninguna opción
+                  displayedPokemonList = [];
+                }
               });
             },
           ),
-          Expanded(
-            child: displayedPokemonList.isEmpty
-                ? Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: displayedPokemonList.length,
-                    itemBuilder: (context, index) {
-                      final pokemon = displayedPokemonList[index];
-                      return ListTile(
-                        title: Text(
-                          pokemon['name'],
-                          style: TextStyle(fontWeight: FontWeight.bold),
+          // Mostrar la lista solo si hay opciones disponibles
+          if (displayedPokemonList.isNotEmpty)
+            Expanded(
+              child: ListView.builder(
+                itemCount: displayedPokemonList.length,
+                itemBuilder: (context, index) {
+                  final pokemon = displayedPokemonList[index];
+                  return ListTile(
+                    title: Text(
+                      pokemon['name'],
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PokemonDetailsScreen(pokemonUrl: pokemon['url']),
                         ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PokemonDetailsScreen(pokemonUrl: pokemon['url']),
-                            ),
-                          );
-                        },
                       );
                     },
-                  ),
-          ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
