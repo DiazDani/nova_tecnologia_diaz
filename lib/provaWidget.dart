@@ -17,7 +17,7 @@ class _ProvaWidgetState extends State<ProvaWidget> {
 
   // Método para obtener los datos de los Pokémon desde tu servidor Node.js
   Future<void> fetchPokemons() async {
-    final response = await http.get(Uri.parse('http://192.168.16.143:3000/pokemons'));
+    final response = await http.get(Uri.parse('http://192.168.19.206:3000/pokemons'));
     if (response.statusCode == 200) {
       setState(() {
         pokemonList = json.decode(response.body)['results'];
@@ -122,27 +122,60 @@ class PokemonDetailsScreen extends StatelessWidget {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else {
             final pokemon = snapshot.data!;
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Image.network(
-                    pokemon['sprites']['front_default'],
-                    height: 200,
-                    width: 200,
-                    fit: BoxFit.cover,
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Name: ${pokemon['name']}',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 10),
-                  Text('Height: ${pokemon['height']}'),
-                  SizedBox(height: 10),
-                  Text('Weight: ${pokemon['weight']}'),
-                ],
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    SizedBox(height: 20),
+                    Row( // Utilizamos Row para alinear la imagen a la izquierda
+                      mainAxisAlignment: MainAxisAlignment.start, // Alineamos al inicio
+                      children: [
+                        Image.network(
+                          pokemon['sprites']['front_default'],
+                          height: 150, // Reducimos el tamaño de la imagen
+                          width: 150, // Reducimos el tamaño de la imagen
+                          fit: BoxFit.cover,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Introduce el nombre del Pokémon',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Ataque',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Ataque',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Ataque',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Ataque',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
