@@ -17,7 +17,7 @@ class _ProvaWidgetState extends State<ProvaWidget> {
 
   // Método para obtener los datos de los Pokémon desde tu servidor Node.js
   Future<void> fetchPokemons() async {
-    final response = await http.get(Uri.parse('http://192.168.19.206:3000/pokemons'));
+    final response = await http.get(Uri.parse('http://192.168.19.144:3000/pokemons'));
     if (response.statusCode == 200) {
       setState(() {
         pokemonList = json.decode(response.body)['results'];
@@ -93,18 +93,48 @@ class _ProvaWidgetState extends State<ProvaWidget> {
 }
 
 // Widget para mostrar los detalles de un Pokémon
-class PokemonDetailsScreen extends StatelessWidget {
+// Widget para mostrar los detalles de un Pokémon
+class PokemonDetailsScreen extends StatefulWidget {
   final String pokemonUrl;
 
   PokemonDetailsScreen({required this.pokemonUrl});
 
+  @override
+  _PokemonDetailsScreenState createState() => _PokemonDetailsScreenState();
+}
+
+class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
+  final TextEditingController _nameController = TextEditingController();
+
+  late Future<Map<String, dynamic>> _pokemonDetailsFuture;
+  Future<List<dynamic>>? _firstGenMovesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _pokemonDetailsFuture = fetchPokemonDetails();
+  }
+
   Future<Map<String, dynamic>> fetchPokemonDetails() async {
-    final response = await http.get(Uri.parse(pokemonUrl));
+    final response = await http.get(Uri.parse(widget.pokemonUrl));
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
       throw Exception('Failed to load data');
     }
+  }
+
+  Future<List<dynamic>> fetchFirstGenMoves(String pokemonName) async {
+    final response = await http.get(Uri.parse('http://192.168.19.144:3000/pokemons/$pokemonName'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body)['firstGenMoves'] ?? [];
+    } else {
+      throw Exception('Failed to load data');
+    }
+  }
+
+  List<dynamic> filterMoves(List<dynamic> moves, String searchText) {
+    return moves.where((move) => move.toString().toLowerCase().contains(searchText.toLowerCase())).toList();
   }
 
   @override
@@ -113,74 +143,91 @@ class PokemonDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('Pokemon Details'),
       ),
-      body: FutureBuilder(
-        future: fetchPokemonDetails(),
-        builder: (context, AsyncSnapshot<Map<String, dynamic>> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else {
-            final pokemon = snapshot.data!;
-            return Center(
-              child: Padding(
+      body: SingleChildScrollView(
+        child: FutureBuilder(
+          future: _pokemonDetailsFuture,
+          builder: (context, AsyncSnapshot<Map<String, dynamic>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            } else {
+              final pokemon = snapshot.data!;
+              if (_firstGenMovesFuture == null) {
+                _firstGenMovesFuture = fetchFirstGenMoves(pokemon['name']);
+              }
+              return Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(height: 20),
-                    Row( // Utilizamos Row para alinear la imagen a la izquierda
-                      mainAxisAlignment: MainAxisAlignment.start, // Alineamos al inicio
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Image.network(
                           pokemon['sprites']['front_default'],
-                          height: 150, // Reducimos el tamaño de la imagen
-                          width: 150, // Reducimos el tamaño de la imagen
+                          height: 150,
+                          width: 150,
                           fit: BoxFit.cover,
                         ),
                       ],
                     ),
                     SizedBox(height: 20),
                     TextField(
+                      controller: _nameController,
                       decoration: InputDecoration(
                         labelText: 'Introduce el nombre del Pokémon',
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    SizedBox(height: 10),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Ataque',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Ataque',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Ataque',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Ataque',
-                        border: OutlineInputBorder(),
-                      ),
+                    SizedBox(height: 20),
+                    FutureBuilder(
+                      future: _firstGenMovesFuture,
+                      builder: (context, AsyncSnapshot<List<dynamic>> movesSnapshot) {
+                        if (movesSnapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        } else if (movesSnapshot.hasError) {
+                          return Center(child: Text('Error: ${movesSnapshot.error}'));
+                        } else {
+                          final moves = movesSnapshot.data!;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Movimientos de la primera generación:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 10),
+                              for (var i = 0; i < 4; i++)
+                                DropdownButtonFormField(
+                                  decoration: InputDecoration(labelText: 'Selecciona un ataque para Ataque ${i + 1}'),
+                                  items: moves.map<DropdownMenuItem<String>>((move) {
+                                    return DropdownMenuItem<String>(
+                                      value: move.toString(),
+                                      child: Text(move.toString()),
+                                    );
+                                  }).toList(),
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      // Aquí puedes realizar cualquier acción que necesites cuando se cambie un ataque
+                                    });
+                                  },
+                                ),
+                            ],
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),
-              ),
-            );
-          }
-        },
+              );
+            }
+          },
+        ),
       ),
     );
   }
 }
+
+
+
