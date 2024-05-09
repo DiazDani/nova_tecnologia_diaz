@@ -8,16 +8,12 @@ class ProvaWidget extends StatefulWidget {
 }
 
 class _ProvaWidgetState extends State<ProvaWidget> {
-  // Declaramos una lista para almacenar los datos de los Pokémon
   List<dynamic> pokemonList = [];
   List<dynamic> displayedPokemonList = [];
-
-  // Controlador para el campo de texto de búsqueda
   final TextEditingController _searchController = TextEditingController();
 
-  // Método para obtener los datos de los Pokémon desde tu servidor Node.js
   Future<void> fetchPokemons() async {
-    final response = await http.get(Uri.parse('http://192.168.19.144:3000/pokemons'));
+    final response = await http.get(Uri.parse('http://192.168.18.85:3080/pokemons'));
     if (response.statusCode == 200) {
       setState(() {
         pokemonList = json.decode(response.body)['results'];
@@ -41,7 +37,6 @@ class _ProvaWidgetState extends State<ProvaWidget> {
       ),
       body: Column(
         children: [
-          // Campo de texto para la búsqueda
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
@@ -51,53 +46,52 @@ class _ProvaWidgetState extends State<ProvaWidget> {
             ),
             onChanged: (value) {
               setState(() {
-                // Filtrar la lista de Pokémon solo si el campo de texto no está vacío
                 if (value.isNotEmpty) {
                   displayedPokemonList = pokemonList.where((pokemon) =>
                       pokemon['name'].toLowerCase().contains(value.toLowerCase())).toList();
                 } else {
-                  // Si el campo de texto está vacío, no mostrar ninguna opción
                   displayedPokemonList = [];
                 }
               });
             },
           ),
-          // Mostrar la lista solo si hay opciones disponibles
-          if (displayedPokemonList.isNotEmpty)
-            Expanded(
-              child: ListView.builder(
-                itemCount: displayedPokemonList.length,
-                itemBuilder: (context, index) {
-                  final pokemon = displayedPokemonList[index];
-                  return ListTile(
-                    title: Text(
-                      pokemon['name'],
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PokemonDetailsScreen(pokemonUrl: pokemon['url']),
+          SizedBox(height: 20),
+          Expanded(
+            child: ListView.builder(
+              itemCount: displayedPokemonList.length,
+              itemBuilder: (context, index) {
+                final pokemon = displayedPokemonList[index];
+                return ListTile(
+                  title: Text(
+                    pokemon['name'],
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PokemonDetailsScreen(
+                          pokemonUrl: pokemon['url'],
+                          displayedPokemonList: displayedPokemonList, // Pasar la lista de Pokémon mostrados
                         ),
-                      );
-                    },
-                  );
-                },
-              ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
+          ),
         ],
       ),
     );
   }
 }
 
-// Widget para mostrar los detalles de un Pokémon
-// Widget para mostrar los detalles de un Pokémon
 class PokemonDetailsScreen extends StatefulWidget {
   final String pokemonUrl;
+  final List<dynamic> displayedPokemonList; // Agregar la lista de Pokémon mostrados como un parámetro
 
-  PokemonDetailsScreen({required this.pokemonUrl});
+  PokemonDetailsScreen({required this.pokemonUrl, required this.displayedPokemonList}); // Modificar el constructor
 
   @override
   _PokemonDetailsScreenState createState() => _PokemonDetailsScreenState();
@@ -105,9 +99,14 @@ class PokemonDetailsScreen extends StatefulWidget {
 
 class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
   final TextEditingController _nameController = TextEditingController();
-
   late Future<Map<String, dynamic>> _pokemonDetailsFuture;
   Future<List<dynamic>>? _firstGenMovesFuture;
+
+  Map<String, dynamic> _pokemonDetails = {};
+
+  List<String> selectedAttacks = ['', '', '', ''];
+
+  List<double> _initialSliderValues = List.filled(5, 252);
 
   @override
   void initState() {
@@ -118,14 +117,15 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
   Future<Map<String, dynamic>> fetchPokemonDetails() async {
     final response = await http.get(Uri.parse(widget.pokemonUrl));
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      _pokemonDetails = json.decode(response.body);
+      return _pokemonDetails;
     } else {
       throw Exception('Failed to load data');
     }
   }
 
   Future<List<dynamic>> fetchFirstGenMoves(String pokemonName) async {
-    final response = await http.get(Uri.parse('http://192.168.19.144:3000/pokemons/$pokemonName'));
+    final response = await http.get(Uri.parse('http://192.168.18.85:3080/pokemons/$pokemonName'));
     if (response.statusCode == 200) {
       return json.decode(response.body)['firstGenMoves'] ?? [];
     } else {
@@ -133,8 +133,40 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
     }
   }
 
-  List<dynamic> filterMoves(List<dynamic> moves, String searchText) {
-    return moves.where((move) => move.toString().toLowerCase().contains(searchText.toLowerCase())).toList();
+  String capitalize(String s) {
+    if (s.isEmpty) return s;
+    return s.split('-').map((word) => word[0].toUpperCase() + word.substring(1)).join(' ');
+  }
+
+  String generatePokepaste(List<double> sliderValues) {
+    String pokemonName = _nameController.text.trim();
+    String species = capitalize(_pokemonDetails['species']['name']);
+    String abilities = 'Ability: No Ability';
+
+    List<String> evs = [
+      'EVs: ${sliderValues[0].toInt()} HP',
+      '${sliderValues[1].toInt()} Atk',
+      '${sliderValues[2].toInt()} Def',
+      '${sliderValues[3].toInt()} SpA',
+      '${sliderValues[4].toInt()} Spe'
+    ];
+
+    List<String> moves = [];
+    for (var move in selectedAttacks) {
+      if (move.isNotEmpty) {
+        moves.add('- $move');
+      }
+    }
+
+    if (pokemonName.isNotEmpty) {
+      pokemonName += ' ($species)';
+    } else {
+      pokemonName = species;
+    }
+
+    String pokepaste = '$pokemonName\n$abilities\n${evs.join(' / ')}\n${moves.join('\n')}';
+
+    return pokepaste;
   }
 
   @override
@@ -142,6 +174,38 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Pokemon Details'),
+        actions: [
+          IconButton(
+  icon: Icon(Icons.file_upload),
+  onPressed: () {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Pokepaste'),
+          content: Container(
+            width: double.maxFinite,
+            child: TextField(
+              maxLines: null,
+              readOnly: true,
+              controller: TextEditingController(text: generatePokepaste(_initialSliderValues)),
+              decoration: InputDecoration(border: OutlineInputBorder()),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  },
+),
+        ],
       ),
       body: SingleChildScrollView(
         child: FutureBuilder(
@@ -176,10 +240,12 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
                     TextField(
                       controller: _nameController,
                       decoration: InputDecoration(
-                        labelText: 'Introduce el nombre del Pokémon',
+                        labelText: 'Mote',
                         border: OutlineInputBorder(),
                       ),
                     ),
+                    SizedBox(height: 20),
+                
                     SizedBox(height: 20),
                     FutureBuilder(
                       future: _firstGenMovesFuture,
@@ -203,13 +269,13 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
                                   decoration: InputDecoration(labelText: 'Selecciona un ataque para Ataque ${i + 1}'),
                                   items: moves.map<DropdownMenuItem<String>>((move) {
                                     return DropdownMenuItem<String>(
-                                      value: move.toString(),
-                                      child: Text(move.toString()),
+                                      value: capitalize(move.toString()),
+                                      child: Text(capitalize(move.toString())),
                                     );
                                   }).toList(),
                                   onChanged: (String? newValue) {
                                     setState(() {
-                                      // Aquí puedes realizar cualquier acción que necesites cuando se cambie un ataque
+                                      selectedAttacks[i] = newValue ?? '';
                                     });
                                   },
                                 ),
@@ -217,6 +283,22 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
                           );
                         }
                       },
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return SliderDialog(initialValues: _initialSliderValues, onChanged: (sliderValues) {
+                              setState(() {
+                                _initialSliderValues = sliderValues;
+                              });
+                            });
+                          },
+                        );
+                      },
+                      child: Text('Ajustar Valores'),
                     ),
                   ],
                 ),
@@ -229,5 +311,129 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
   }
 }
 
+class SliderDialog extends StatefulWidget {
+  final List<double> initialValues;
+  final void Function(List<double>)? onChanged;
 
+  SliderDialog({required this.initialValues, this.onChanged});
 
+  @override
+  _SliderDialogState createState() => _SliderDialogState();
+}
+
+class _SliderDialogState extends State<SliderDialog> {
+  late List<double> _sliderValues;
+
+  @override
+  void initState() {
+    super.initState();
+    _sliderValues = List.from(widget.initialValues);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Ajustar Valores'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(
+          5, // Cambiar 4 a 5 para agregar otro slider
+          (index) => Column(
+            children: [
+              Text(
+                _getFieldTitle(index), // Usar la función _getFieldTitle para obtener el título correspondiente
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                value: _sliderValues[index], // Actualizar los índices de los valores y los valores seleccionados
+                min: 0,
+                max: 252,
+                divisions: 252,
+                onChanged: (value) {
+                  setState(() {
+                    _sliderValues[index] = value; // Actualizar los índices de los valores y los valores seleccionados
+                  });
+                  // Actualizar el pokepaste cada vez que se cambie un valor en el slider
+                  if (widget.onChanged != null) {
+                    widget.onChanged!(_sliderValues);
+                  }
+                },
+              ),
+              Text('Valor seleccionado: ${_sliderValues[index].toInt()}'),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text('Cerrar'),
+        ),
+      ],
+    );
+  }
+
+  // Función para obtener el título correspondiente al índice del slider
+  String _getFieldTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'HP';
+      case 1:
+        return 'Attack';
+      case 2:
+        return 'Defense';
+      case 3:
+        return 'Special';
+      case 4:
+        return 'Speed';
+      default:
+        return '';
+    }
+  }
+}
+
+class PokepasteDialog extends StatelessWidget {
+  final List<dynamic> pokemonList;
+
+  PokepasteDialog({required this.pokemonList});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Pokepaste'),
+      content: Container(
+        width: double.maxFinite,
+        child: ListView.builder(
+          itemCount: pokemonList.length,
+          itemBuilder: (context, index) {
+            final pokemon = pokemonList[index];
+            return ListTile(
+              title: Text(
+                pokemon['name'],
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text('Species: ${pokemon['species']['name']}'),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text('Cerrar'),
+        ),
+      ],
+    );
+  }
+}
+
+void main() {
+  runApp(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: ProvaWidget(),
+  ));
+}
