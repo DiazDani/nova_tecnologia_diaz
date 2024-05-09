@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+// Widget principal que mostra la llista de Pokémon i permet buscar-los
 class ProvaWidget extends StatefulWidget {
   @override
   _ProvaWidgetState createState() => _ProvaWidgetState();
@@ -12,8 +13,12 @@ class _ProvaWidgetState extends State<ProvaWidget> {
   List<dynamic> displayedPokemonList = [];
   final TextEditingController _searchController = TextEditingController();
 
+  // Funció per obtenir la llista de Pokémon desde l'API
   Future<void> fetchPokemons() async {
-    final response = await http.get(Uri.parse('http://192.168.18.85:3080/pokemons'));
+
+        //CANVIAR LA IP O NO FUNCIONARÀ
+
+    final response = await http.get(Uri.parse('http://192.168.1.174:3080/pokemons'));
     if (response.statusCode == 200) {
       setState(() {
         pokemonList = json.decode(response.body)['results'];
@@ -37,11 +42,12 @@ class _ProvaWidgetState extends State<ProvaWidget> {
       ),
       body: Column(
         children: [
+          // Camp de busqueda per filtrar la llista de Pokémon
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              labelText: 'Buscar Pokémon',
-              hintText: 'Ingrese el nombre del Pokémon',
+              labelText: 'Search Pokémon',
+              hintText: 'Enter a Pokémon Name',
               prefixIcon: Icon(Icons.search),
             ),
             onChanged: (value) {
@@ -72,7 +78,7 @@ class _ProvaWidgetState extends State<ProvaWidget> {
                       MaterialPageRoute(
                         builder: (context) => PokemonDetailsScreen(
                           pokemonUrl: pokemon['url'],
-                          displayedPokemonList: displayedPokemonList, // Pasar la lista de Pokémon mostrados
+                          displayedPokemonList: displayedPokemonList,
                         ),
                       ),
                     );
@@ -87,11 +93,12 @@ class _ProvaWidgetState extends State<ProvaWidget> {
   }
 }
 
+// Pantalla de detalls d'un Pokémon, amb opcions per adjustar els valors EVs
 class PokemonDetailsScreen extends StatefulWidget {
   final String pokemonUrl;
-  final List<dynamic> displayedPokemonList; // Agregar la lista de Pokémon mostrados como un parámetro
+  final List<dynamic> displayedPokemonList;
 
-  PokemonDetailsScreen({required this.pokemonUrl, required this.displayedPokemonList}); // Modificar el constructor
+  PokemonDetailsScreen({required this.pokemonUrl, required this.displayedPokemonList});
 
   @override
   _PokemonDetailsScreenState createState() => _PokemonDetailsScreenState();
@@ -114,6 +121,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
     _pokemonDetailsFuture = fetchPokemonDetails();
   }
 
+  // Funció per obtenir els detalls d'un Pokémon desde la API
   Future<Map<String, dynamic>> fetchPokemonDetails() async {
     final response = await http.get(Uri.parse(widget.pokemonUrl));
     if (response.statusCode == 200) {
@@ -124,8 +132,11 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
     }
   }
 
+  // Funció per obtenir els movimients de primera generació d'un Pokémon desde l'API
   Future<List<dynamic>> fetchFirstGenMoves(String pokemonName) async {
-    final response = await http.get(Uri.parse('http://192.168.18.85:3080/pokemons/$pokemonName'));
+
+    //CANVIAR LA IP O NO FUNCIONARÀ
+    final response = await http.get(Uri.parse('http://192.168.1.174:3080/pokemons/$pokemonName'));
     if (response.statusCode == 200) {
       return json.decode(response.body)['firstGenMoves'] ?? [];
     } else {
@@ -133,11 +144,13 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
     }
   }
 
+  // Función per modificar la cadena de text dels atacs 
   String capitalize(String s) {
     if (s.isEmpty) return s;
     return s.split('-').map((word) => word[0].toUpperCase() + word.substring(1)).join(' ');
   }
 
+  // Funció per generar el pokepaste amb els valors EVs i atacs seleccionats
   String generatePokepaste(List<double> sliderValues) {
     String pokemonName = _nameController.text.trim();
     String species = capitalize(_pokemonDetails['species']['name']);
@@ -175,36 +188,37 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
       appBar: AppBar(
         title: Text('Pokemon Details'),
         actions: [
+          // Botó per mostrar el pokepaste generat
           IconButton(
-  icon: Icon(Icons.file_upload),
-  onPressed: () {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Pokepaste'),
-          content: Container(
-            width: double.maxFinite,
-            child: TextField(
-              maxLines: null,
-              readOnly: true,
-              controller: TextEditingController(text: generatePokepaste(_initialSliderValues)),
-              decoration: InputDecoration(border: OutlineInputBorder()),
-            ),
+            icon: Icon(Icons.file_upload),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: Text('Pokepaste'),
+                    content: Container(
+                      width: double.maxFinite,
+                      child: TextField(
+                        maxLines: null,
+                        readOnly: true,
+                        controller: TextEditingController(text: generatePokepaste(_initialSliderValues)),
+                        decoration: InputDecoration(border: OutlineInputBorder()),
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: Text('Close'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cerrar'),
-            ),
-          ],
-        );
-      },
-    );
-  },
-),
         ],
       ),
       body: SingleChildScrollView(
@@ -240,12 +254,11 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
                     TextField(
                       controller: _nameController,
                       decoration: InputDecoration(
-                        labelText: 'Mote',
+                        labelText: 'Nickname',
                         border: OutlineInputBorder(),
                       ),
                     ),
                     SizedBox(height: 20),
-                
                     SizedBox(height: 20),
                     FutureBuilder(
                       future: _firstGenMovesFuture,
@@ -259,14 +272,10 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Movimientos de la primera generación:',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
                               SizedBox(height: 10),
                               for (var i = 0; i < 4; i++)
                                 DropdownButtonFormField(
-                                  decoration: InputDecoration(labelText: 'Selecciona un ataque para Ataque ${i + 1}'),
+                                  decoration: InputDecoration(labelText: 'Select an Attack'),
                                   items: moves.map<DropdownMenuItem<String>>((move) {
                                     return DropdownMenuItem<String>(
                                       value: capitalize(move.toString()),
@@ -298,7 +307,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
                           },
                         );
                       },
-                      child: Text('Ajustar Valores'),
+                      child: Text('Adjust EVs'),
                     ),
                   ],
                 ),
@@ -311,6 +320,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen> {
   }
 }
 
+// Widget que mostra el dialeg amb sliders per adjustar els EVs
 class SliderDialog extends StatefulWidget {
   final List<double> initialValues;
   final void Function(List<double>)? onChanged;
@@ -333,33 +343,32 @@ class _SliderDialogState extends State<SliderDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Ajustar Valores'),
+      title: Text('Adjust EVs'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(
-          5, // Cambiar 4 a 5 para agregar otro slider
+          5,
           (index) => Column(
             children: [
               Text(
-                _getFieldTitle(index), // Usar la función _getFieldTitle para obtener el título correspondiente
+                _getFieldTitle(index),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Slider(
-                value: _sliderValues[index], // Actualizar los índices de los valores y los valores seleccionados
+                value: _sliderValues[index],
                 min: 0,
                 max: 252,
                 divisions: 252,
                 onChanged: (value) {
                   setState(() {
-                    _sliderValues[index] = value; // Actualizar los índices de los valores y los valores seleccionados
+                    _sliderValues[index] = value;
                   });
-                  // Actualizar el pokepaste cada vez que se cambie un valor en el slider
                   if (widget.onChanged != null) {
                     widget.onChanged!(_sliderValues);
                   }
                 },
               ),
-              Text('Valor seleccionado: ${_sliderValues[index].toInt()}'),
+              Text('Selected value: ${_sliderValues[index].toInt()}'),
             ],
           ),
         ),
@@ -369,13 +378,13 @@ class _SliderDialogState extends State<SliderDialog> {
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: Text('Cerrar'),
+          child: Text('Close'),
         ),
       ],
     );
   }
 
-  // Función para obtener el título correspondiente al índice del slider
+  // Funció per obtenir el titol corresponent a cada Slider
   String _getFieldTitle(int index) {
     switch (index) {
       case 0:
@@ -394,6 +403,7 @@ class _SliderDialogState extends State<SliderDialog> {
   }
 }
 
+// Widget que mostra el dialeg amb el contingut del Pokepaste
 class PokepasteDialog extends StatelessWidget {
   final List<dynamic> pokemonList;
 
@@ -424,7 +434,7 @@ class PokepasteDialog extends StatelessWidget {
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: Text('Cerrar'),
+          child: Text('Close'),
         ),
       ],
     );

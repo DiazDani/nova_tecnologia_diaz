@@ -7,7 +7,6 @@ const PORT = process.env.PORT || 3080;
 
 app.use(cors());
 
-// Función para obtener los ataques de un Pokémon de la primera generación
 async function getFirstGenMoves(pokemonName) {
     try {
         const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
@@ -22,10 +21,8 @@ async function getFirstGenMoves(pokemonName) {
     }
 }
 
-// Ruta para obtener los datos de la PokéAPI
 app.get('/pokemons', async (req, res) => {
     try {
-        // Realizar la llamada a la PokéAPI
         const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=151');
         const data = response.data;
         res.json(data);
@@ -34,14 +31,13 @@ app.get('/pokemons', async (req, res) => {
     }
 });
 
-// Ruta para obtener los datos de un Pokémon y sus movimientos de la primera generación
+// Route to get data of a Pokémon and its first generation moves
 app.get('/pokemons/:name', async (req, res) => {
     try {
         const { name } = req.params;
-        // Obtener los datos básicos del Pokémon
         const pokemonDataResponse = await axios.get(`https://pokeapi.co/api/v2/pokemon/${name}`);
         const pokemonData = pokemonDataResponse.data;
-        // Obtener los movimientos de la primera generación del Pokémon
+        // Get first generation moves of the Pokémon
         const firstGenMoves = await getFirstGenMoves(name);
         res.json({ pokemonData, firstGenMoves });
     } catch (error) {
@@ -50,5 +46,5 @@ app.get('/pokemons/:name', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Servidor intermedio escuchando en el puerto ${PORT}`);
+    console.log(`server listening on port ${PORT}`);
 });
